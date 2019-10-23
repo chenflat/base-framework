@@ -1,0 +1,9 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  io.github.supercube.config.apidoc.SwaggerAutoConfiguration,\
+  io.github.supercube.config.apidoc.SwaggerPluginsAutoConfiguration,\
+  io.github.supercube.config.FrameworkProperties,\
+  io.github.supercube.security.uaa.UaaAutoConfiguration,\
+  io.github.supercube.config.info.FrameworkInfoContributorConfiguration,\
+  io.github.supercube.config.metric.MetricsEndpointConfiguration,\
+  io.github.supercube.config.metric.LoggingMetricsExportConfiguration,\
+  io.github.supercube.security.ssl.UndertowSSLConfiguration

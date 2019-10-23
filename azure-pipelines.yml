@@ -1,0 +1,135 @@
+
+jobs:
+  - job: Test
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    variables:
+      PROFILE: dev
+      RUN_APP: 1
+      PROTRACTOR: 0
+      ENTITY: sql
+      # this version is used for testing with CICD
+      VERSION: 0.0.0-CICD
+      # if LIB_BRANCH value is release, use the release from Maven
+      LIB_REPO: https://github.com/supercube1/base-framework.git
+      LIB_BRANCH: master
+      GEN_BRANCH: master
+      # specific config
+      SPRING_OUTPUT_ANSI_ENABLED: ALWAYS
+      SPRING_JPA_SHOW_SQL: false
+      DISABLE_WEBPACK_LOGS: true
+      E2E_HEADLESS: true
+      SCRIPTS: $HOME/generator-framework/test-integration/scripts
+      NG_CLI_ANALYTICS: false
+
+    strategy:
+      matrix:
+        ngx-default:
+          APP: ngx-default
+          PROFILE: prod
+          PROTRACTOR: 1
+        ngx-psql-es-noi18n-mapsid:
+          APP: ngx-psql-es-noi18n-mapsid
+          PROFILE: prod
+          PROTRACTOR: 1
+        ngx-gradle-fr:
+          APP: ngx-gradle-fr
+          PROFILE: prod
+          PROTRACTOR: 1
+        ngx-mariadb-oauth2-sass-infinispan:
+          APP: ngx-mariadb-oauth2-sass-infinispan
+          PROTRACTOR: 1
+        ngx-h2mem-ws-nol2:
+          APP: ngx-h2mem-ws-nol2
+        ngx-mongodb-kafka-cucumber:
+          APP: ngx-mongodb-kafka-cucumber
+          ENTITY: mongodb
+        ngx-session-cassandra-fr:
+          APP: ngx-session-cassandra-fr
+          ENTITY: cassandra
+        ngx-couchbase:
+          APP: ngx-couchbase
+          ENTITY: couchbase
+        ms-ngx-gateway-eureka:
+          APP: ms-ngx-gateway-eureka
+        ms-ngx-gateway-consul:
+          APP: ms-ngx-gateway-consul
+        ms-ngx-gateway-uaa:
+          APP: ms-ngx-gateway-uaa
+          ENTITY: uaa
+        ms-micro-eureka:
+          APP: ms-micro-eureka
+          ENTITY: micro
+        ms-micro-consul:
+          APP: ms-micro-consul
+          ENTITY: micro
+        react-default:
+          APP: react-default
+
+    steps:
+      - script: |
+          sudo /etc/init.d/mysql stop
+        displayName: 'Before Install'
+
+      #----------------------------------------------------------------------
+      # Install all tools and check configuration
+      #----------------------------------------------------------------------
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '10.16.0'
+        displayName: 'TOOLS: install Node.js'
+
+      - script: npm install -g npm
+        displayName: 'TOOLS: update NPM'
+
+      - script: |
+          set -e
+          sudo add-apt-repository ppa:openjdk-r/ppa
+          sudo apt-get update
+          sudo apt-get install -y openjdk-8-jdk
+          sudo update-java-alternatives -s java-1.8.0-openjdk-amd64
+          java -version
+        displayName: 'TOOLS: configuring OpenJDK'
+
+      - script: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+          sudo apt update
+          sudo apt install google-chrome-stable
+        displayName: 'TOOLS: install google-chrome-stable'
+
+      - script: |
+          git config --global user.name "Bot"
+          git config --global user.email "bot@test.tech"
+        displayName: 'TOOLS: configure git'
+
+      #----------------------------------------------------------------------
+      # Install and generate project+entities
+      #----------------------------------------------------------------------
+      - bash: $(Build.Repository.LocalPath)/test-integration/scripts/10-install-supercube-lib.sh
+        displayName: 'GENERATION: install base framework library'
+      - bash: $(SCRIPTS)/11-generate-entities.sh
+        displayName: 'GENERATION: entities'
+      - bash: $(SCRIPTS)/12-generate-project.sh
+        displayName: 'GENERATION: project'
+      - bash: $(SCRIPTS)/13-replace-version-generated-project.sh
+        displayName: 'GENERATION: replace version in generated project'
+      - bash: $(SCRIPTS)/14-framework-info.sh
+        displayName: 'GENERATION: Framework info'
+
+      #----------------------------------------------------------------------
+      # Launch tests
+      #----------------------------------------------------------------------
+      - bash: $(SCRIPTS)/20-docker-compose.sh
+        displayName: 'TESTS: Start docker-compose containers'
+      - bash: $(SCRIPTS)/21-tests-backend.sh
+        displayName: 'TESTS: backend'
+      - bash: $(SCRIPTS)/22-tests-frontend.sh
+        displayName: 'TESTS: frontend'
+      - bash: $(SCRIPTS)/23-package.sh
+        displayName: 'TESTS: packaging'
+      - bash: $(SCRIPTS)/24-tests-e2e.sh
+        displayName: 'TESTS: End-to-End'
+      - bash: $(SCRIPTS)/25-sonar-analyze.sh
+        displayName: 'TESTS: Sonar analyze'
+
