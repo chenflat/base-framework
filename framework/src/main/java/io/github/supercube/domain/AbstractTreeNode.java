@@ -6,6 +6,7 @@ import org.springframework.beans.BeanUtils;
 import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.MappedSuperclass;
+import javax.persistence.Transient;
 import java.util.List;
 
 /**
@@ -52,6 +53,7 @@ public class AbstractTreeNode implements ITreeNode {
     @Column
     private Long value;
 
+    @Transient
     protected List<? extends ITreeNode> children;
 
     public AbstractTreeNode() {
